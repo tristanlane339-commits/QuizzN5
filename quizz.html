@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌸 Kanji Quiz N5 🌸</title>
+<style>
+body{
+margin:0;font-family:Arial;color:white;
+display:flex;justify-content:center;align-items:center;height:100vh;
+background:linear-gradient(rgba(15,23,42,0.85),rgba(15,23,42,0.95)),
+url('https://images.unsplash.com/photo-1522383225653-ed111181a951');
+background-size:cover;background-position:center;
+transition:background 0.5s;
+}
+.app{
+width:95%;max-width:650px;background:rgba(17,24,39,0.9);
+padding:20px;border-radius:20px;text-align:center;
+backdrop-filter:blur(8px);
+transition:all 0.5s ease;
+}
+.kanji-list{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-height:220px;overflow:auto;margin-bottom:10px}
+.kanji-item input{display:none}
+.kanji-item span{display:block;padding:6px;border-radius:6px;transition:0.3s;}
+.kanji-item input:checked+span{background:#fb7185;color:black}
+.small{font-size:10px;opacity:0.8;transition:0.3s;}
+.hidden span{visibility:hidden}
+.question{font-size:60px;margin:15px;transition: all 0.3s ease;}
+input.answer{padding:10px;border-radius:10px;border:none;width:80%;text-align:center}
+button{padding:10px;margin:5px;border:none;border-radius:10px;cursor:pointer;transition:0.3s;}
+button:hover{background:#fb7185;color:black;}
+.correct{color:#4ade80;transition:0.3s;}
+.wrong{color:#f87171;transition:0.3s;}
+.language-select{margin-bottom:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+<h2>🌸 Kanji Quiz N5 🌸</h2>
+
+<select id="lang" class="language-select" onchange="changeLang()">
+<option value="en">English</option>
+<option value="fr">Français</option>
+<option value="th">ไทย</option>
+<option value="ar">العربية</option>
+</select>
+
+<button onclick="toggleVisibility()">Show / Hide</button>
+
+<div id="kanjiList" class="kanji-list"></div>
+
+<button onclick="selectAll(true)">All</button>
+<button onclick="selectAll(false)">None</button>
+<button onclick="startQuiz()">Start</button>
+
+<div id="quiz" style="display:none">
+<div id="question" class="question"></div>
+<input id="input" class="answer" placeholder="Type your answer..." onkeydown="if(event.key==='Enter')check()">
+<p id="result"></p>
+<p id="score"></p>
+</div>
+
+</div>
+
+<script>
+const kanjis=[
+{k:"一",m:{en:"one",fr:"un",th:"หนึ่ง",ar:"واحد"}},
+{k:"二",m:{en:"two",fr:"deux",th:"สอง",ar:"اثنان"}},
+{k:"三",m:{en:"three",fr:"trois",th:"สาม",ar:"ثلاثة"}},
+{k:"四",m:{en:"four",fr:"quatre",th:"สี่",ar:"أربعة"}},
+{k:"五",m:{en:"five",fr:"cinq",th:"ห้า",ar:"خمسة"}},
+{k:"六",m:{en:"six",fr:"six",th:"หก",ar:"ستة"}},
+{k:"七",m:{en:"seven",fr:"sept",th:"เจ็ด",ar:"سبعة"}},
+{k:"八",m:{en:"eight",fr:"huit",th:"แปด",ar:"ثمانية"}},
+{k:"九",m:{en:"nine",fr:"neuf",th:"เก้า",ar:"تسعة"}},
+{k:"十",m:{en:"ten",fr:"dix",th:"สิบ",ar:"عشرة"}},
+{k:"百",m:{en:"hundred",fr:"cent",th:"ร้อย",ar:"مائة"}},
+{k:"千",m:{en:"thousand",fr:"mille",th:"พัน",ar:"ألف"}},
+{k:"万",m:{en:"ten thousand",fr:"dix mille",th:"หมื่น",ar:"عشرة آلاف"}},
+{k:"円",m:{en:"yen / circle",fr:"yen / cercle",th:"เยน / วงกลม",ar:"ين / دائرة"}},
+{k:"日",m:{en:"day / sun",fr:"jour / soleil",th:"วัน / พระอาทิตย์",ar:"يوم / شمس"}},
+{k:"月",m:{en:"moon / month",fr:"lune / mois",th:"พระจันทร์ / เดือน",ar:"قمر / شهر"}},
+{k:"火",m:{en:"fire",fr:"feu",th:"ไฟ",ar:"نار"}},
+{k:"水",m:{en:"water",fr:"eau",th:"น้ำ",ar:"ماء"}},
+{k:"木",m:{en:"tree / wood",fr:"arbre / bois",th:"ไม้",ar:"شجرة / خشب"}},
+{k:"金",m:{en:"gold / metal / money",fr:"or / métal / argent",th:"ทอง / โลหะ / เงิน",ar:"ذهب / معدن / مال"}},
+{k:"土",m:{en:"earth / soil",fr:"terre / sol",th:"ดิน",ar:"أرض"}},
+{k:"山",m:{en:"mountain",fr:"montagne",th:"ภูเขา",ar:"جبل"}},
+{k:"川",m:{en:"river",fr:"rivière",th:"แม่น้ำ",ar:"نهر"}},
+{k:"田",m:{en:"field",fr:"champ",th:"ทุ่งนา",ar:"حقل"}},
+{k:"人",m:{en:"person",fr:"personne",th:"คน",ar:"شخص"}},
+{k:"口",m:{en:"mouth",fr:"bouche",th:"ปาก",ar:"فم"}},
+{k:"目",m:{en:"eye",fr:"œil",th:"ตา",ar:"عين"}},
+{k:"耳",m:{en:"ear",fr:"oreille",th:"หู",ar:"أذن"}},
+{k:"手",m:{en:"hand",fr:"main",th:"มือ",ar:"يد"}},
+{k:"足",m:{en:"foot / leg",fr:"pied / jambe",th:"เท้า / ขา",ar:"قدم / ساق"}},
+{k:"力",m:{en:"power",fr:"force",th:"พลัง",ar:"قوة"}},
+{k:"女",m:{en:"woman",fr:"femme",th:"ผู้หญิง",ar:"امرأة"}},
+{k:"男",m:{en:"man",fr:"homme",th:"ผู้ชาย",ar:"رجل"}},
+{k:"子",m:{en:"child",fr:"enfant",th:"เด็ก",ar:"طفل"}},
+{k:"学",m:{en:"study",fr:"étude",th:"การเรียน",ar:"دراسة"}},
+{k:"校",m:{en:"school",fr:"école",th:"โรงเรียน",ar:"مدرسة"}},
+{k:"生",m:{en:"life / birth",fr:"vie / naissance",th:"ชีวิต / เกิด",ar:"حياة / ولادة"}},
+{k:"先",m:{en:"previous / ahead",fr:"précédent / devant",th:"ก่อนหน้า / ข้างหน้า",ar:"سابق / أمام"}},
+{k:"私",m:{en:"I / private",fr:"je / privé",th:"ฉัน / ส่วนตัว",ar:"أنا / خاص"}},
+{k:"友",m:{en:"friend",fr:"ami",th:"เพื่อน",ar:"صديق"}},
+{k:"本",m:{en:"book / origin",fr:"livre / origine",th:"หนังสือ / แหล่งกำเนิด",ar:"كتاب / أصل"}},
+{k:"語",m:{en:"language / word",fr:"langue / mot",th:"ภาษา / คำ",ar:"لغة / كلمة"}},
+{k:"上",m:{en:"up / above",fr:"haut / au-dessus",th:"บน / เหนือ",ar:"أعلى / فوق"}},
+{k:"下",m:{en:"down / below",fr:"bas / dessous",th:"ล่าง / ต่ำกว่า",ar:"أسفل / تحت"}},
+{k:"左",m:{en:"left",fr:"gauche",th:"ซ้าย",ar:"يسار"}},
+{k:"右",m:{en:"right",fr:"droite",th:"ขวา",ar:"يمين"}},
+{k:"中",m:{en:"middle / inside",fr:"milieu / dedans",th:"กลาง / ข้างใน",ar:"وسط / داخل"}},
+{k:"大",m:{en:"big / large",fr:"grand / large",th:"ใหญ่ / กว้าง",ar:"كبير / واسع"}},
+{k:"小",m:{en:"small",fr:"petit",th:"เล็ก",ar:"صغير"}},
+{k:"高",m:{en:"tall / high",fr:"haut / élevé",th:"สูง / สูง",ar:"عالي / مرتفع"}},
+{k:"安",m:{en:"safe / cheap",fr:"sûr / bon marché",th:"ปลอดภัย / ถูก",ar:"آمن / رخيص"}},
+{k:"新",m:{en:"new",fr:"nouveau",th:"ใหม่",ar:"جديد"}},
+{k:"古",m:{en:"old",fr:"ancien",th:"เก่า",ar:"قديم"}},
+{k:"天",m:{en:"heaven / sky",fr:"ciel / paradis",th:"สวรรค์ / ท้องฟ้า",ar:"سماء / جنة"}},
+{k:"気",m:{en:"spirit / air",fr:"esprit / air",th:"จิตวิญญาณ / อากาศ",ar:"روح / هواء"}},
+{k:"雨",m:{en:"rain",fr:"pluie",th:"ฝน",ar:"مطر"}},
+{k:"電",m:{en:"electricity",fr:"électricité",th:"ไฟฟ้า",ar:"كهرباء"}},
+{k:"車",m:{en:"car / vehicle",fr:"voiture / véhicule",th:"รถ / ยานพาหนะ",ar:"سيارة / مركبة"}},
+{k:"駅",m:{en:"station",fr:"gare",th:"สถานี",ar:"محطة"}},
+{k:"道",m:{en:"road / path",fr:"route / chemin",th:"ถนน / ทาง",ar:"طريق / مسار"}},
+{k:"海",m:{en:"sea / ocean",fr:"mer / océan",th:"ทะเล / มหาสมุทร",ar:"بحر / محيط"}},
+{k:"空",m:{en:"sky / empty",fr:"ciel / vide",th:"ท้องฟ้า / ว่าง",ar:"سماء / فارغ"}},
+{k:"語",m:{en:"language / word",fr:"langue / mot",th:"ภาษา / คำ",ar:"لغة / كلمة"}},
+// Add more until you reach all ~100 N5 kanji in the same format
+];
+
+let selected=[],current,score=0;
+let visible=true;
+let lang="en";
+
+const list=document.getElementById("kanjiList");
+function renderList(){
+list.style.opacity=0;
+setTimeout(()=>{
+list.innerHTML="";
+kanjis.forEach((k,i)=>{
+list.innerHTML+=`<label class="kanji-item"><input type="checkbox" value="${i}"><span>${k.k}<div class="small">${k.m[lang]}</div></span></label>`;
+});
+list.style.opacity=1;
+},200);
+}
+renderList();
+
+function toggleVisibility(){
+visible=!visible;
+list.classList.toggle("hidden");
+}
+
+function selectAll(v){document.querySelectorAll("input[type=checkbox]").forEach(c=>c.checked=v)}
+
+function startQuiz(){
+const checked=document.querySelectorAll("input[type=checkbox]:checked");
+selected=[...checked].map(c=>kanjis[c.value]);
+if(selected.length===0)return alert("Choose kanji");
+score=0;
+document.getElementById("quiz").style.display="block";
+next();
+}
+
+function next(){
+current=selected[Math.floor(Math.random()*selected.length)];
+const questionEl=document.getElementById("question");
+questionEl.style.opacity=0;
+setTimeout(()=>{questionEl.textContent=current.k;questionEl.style.opacity=1;},150);
+document.getElementById("input").value="";
+document.getElementById("input").focus();
+}
+
+function check(){
+let val=document.getElementById("input").value.toLowerCase().trim();
+let res=document.getElementById("result");
+if(val===current.m[lang].toLowerCase()){
+score++;
+res.textContent="Correct!";
+res.className="correct";
+next();
+}
+else{
+res.textContent="Wrong: "+current.m[lang];
+res.className="wrong";
+setTimeout(next,800);
+}
+document.getElementById("score").textContent="Score: "+score;
+}
+
+function changeLang(){
+lang=document.getElementById("lang").value;
+renderList();
+}
+</script>
+</body>
+</html><div id="quiz" style="display:none">
+  <div class="card">
+    <div id="question" class="question"></div>
+    <input id="input" class="answer" placeholder="Type your answer..." onkeydown="if(event.key==='Enter')check()">
+    <p id="result"></p>
+    <p id="score"></p>
+  </div>
+</div>
+
+<style>
+.card {
+  background: white;
+  color: black;
+  padding: 30px;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 400px;
+  margin: 20px auto;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.question {
+  font-size: 80px;
+  margin: 20px 0;
+  font-weight: bold;
+  transition: opacity 0.3s ease;
+}
+
+input.answer {
+  font-size: 20px;
+}
+</style><div id="quiz" style="display:none">
+  <div class="card">
+    <div id="question" class="question"></div>
+    <input id="input" class="answer" placeholder="Type your answer...">
+    <p id="result"></p>
+    <p id="score"></p>
+  </div>
+</div>
+
+<script>
+let current, selected=[], score=0;
+let lang="en";
+
+// Example kanji array
+const kanjis=[
+  {k:"一", m:{en:"one", fr:"un", th:"หนึ่ง", ar:"واحد"}},
+  {k:"二", m:{en:"two", fr:"deux", th:"สอง", ar:"اثنان"}},
+  {k:"三", m:{en:"three", fr:"trois", th:"สาม", ar:"ثلاثة"}}
+];
+
+const questionEl=document.getElementById("question");
+const inputEl=document.getElementById("input");
+const resultEl=document.getElementById("result");
+const scoreEl=document.getElementById("score");
+
+function startQuiz(){
+  selected = [...kanjis]; // Or use checkboxes selection
+  score = 0;
+  document.getElementById("quiz").style.display="block";
+  nextQuestion();
+}
+
+function nextQuestion(){
+  current = selected[Math.floor(Math.random()*selected.length)];
+  questionEl.style.opacity = 0;
+  setTimeout(()=>{
+    questionEl.textContent = current.k;
+    questionEl.style.opacity = 1;
+    inputEl.value="";
+    inputEl.focus();
+  }, 150);
+}
+
+inputEl.addEventListener("input", ()=>{
+  let val = inputEl.value.toLowerCase().trim();
+  if(val === current.m[lang].toLowerCase()){
+    score++;
+    scoreEl.textContent = "Score: "+score;
+    resultEl.textContent = "Correct!";
+    resultEl.className="correct";
+    nextQuestion(); // Auto-next on correct
+  }
+});
+
+inputEl.addEventListener("keydown", (e)=>{
+  if(e.key==="Enter"){
+    let val = inputEl.value.toLowerCase().trim();
+    if(val !== current.m[lang].toLowerCase()){
+      resultEl.textContent = "Wrong: "+current.m[lang];
+      resultEl.className="wrong";
+    }
+    scoreEl.textContent = "Score: "+score;
+    inputEl.value=""; // Clear input to try again or move on
+  }
+});
+</script>
+
+<style>
+.card {
+  background: white;
+  color: black;
+  padding: 30px;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 400px;
+  margin: 20px auto;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+.question {
+  font-size: 80px;
+  margin: 20px 0;
+  font-weight: bold;
+  transition: opacity 0.3s ease;
+}
+input.answer {
+  font-size: 20px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  width: 90%;
+  text-align: center;
+}
+.correct{color:green;}
+.wrong{color:red;}
+</style>
